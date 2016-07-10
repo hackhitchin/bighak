@@ -10,33 +10,40 @@ class rc:
         """Simple method to stop the RC loop"""
         self.killed = True
 
-    def handler(self, button):
-        """Button handler, will be bound to the square button later"""
-        print 'Button {} pressed'.format(button)
-
     def run(self):
         """Start listening to the controller and pass state to drivetrain"""
         # Get a joystick, this will fail unless the SixAxis controller is paired and active
         # The bind_defaults argument specifies that we should bind actions to the SELECT and START buttons to
         # centre the controller and reset the calibration respectively.
-        with SixAxisResource(bind_defaults=True) as joystick:
-            # Register a button handler for the square button
-            joystick.register_button_handler(self.handler, SixAxis.BUTTON_SQUARE)
-            # Loop indefinitely
-            while not self.killed:
-                # Read the x and y axes of the left hand stick
-                lx = joystick.axes[0].corrected_value()
-                ly = joystick.axes[1].corrected_value()
-                # Read the x and y axes of the right hand stick
-                rx = joystick.axes[2].corrected_value()
-                ry = joystick.axes[3].corrected_value()
-                # Show the values to the screen
-                print(lx,ly, rx,ry)
+        try:
+            with SixAxisResource(bind_defaults=True) as joystick:
+                # Loop indefinitely
+                while not self.killed:
+                    # Get button and joystick axis state
+                    buttons_pressed = joystick.get_and_clear_button_press_history()
+
+                    # Read the x and y axes of the left hand stick
+                    lx = joystick.axes[0].corrected_value()
+                    ly = joystick.axes[1].corrected_value()
+                    # Read the x and y axes of the right hand stick
+                    rx = joystick.axes[2].corrected_value()
+                    ry = joystick.axes[3].corrected_value()
+
+                    # Do something if buttons pressed
+                    if buttons_pressed & 1 << SixAxis.BUTTON_SQUARE:
+                        print 'SQUARE pressed since last check'
+
+                    # Show the values to the screen
+#                    print(lx,ly, rx,ry)
+
+        except (IOError):
+            print("No PS3 Controller")
 
 if __name__ == "__main__":
     rc = rc()
     try:
         rc.run()
-    except (Exception, KeyboardInterrupt) as e:
+    except (KeyboardInterrupt) as e:
+        #except (Exception, KeyboardInterrupt) as e:
         # Stop any active threads before leaving
         print("Quitting")
