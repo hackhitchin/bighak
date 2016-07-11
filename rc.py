@@ -1,10 +1,13 @@
 # Import triangula module to interact with SixAxis
 from triangula.input import SixAxis, SixAxisResource
+import drivetrain
+import time
 
 class rc:
-    def __init__(self):
+    def __init__(self, drive):
         """Class Constructor"""
         self.killed = False
+        self.drive = drive
 
     def stop(self):
         """Simple method to stop the RC loop"""
@@ -35,6 +38,10 @@ class rc:
 
                     # Show the values to the screen
 #                    print(lx,ly, rx,ry)
+                    if self.drive is not None:
+                        self.drive.mix_channels_and_send(lx, ly, rx, ry)
+                    # Sleep a small amount between loop iterations
+                    time.sleep(0.05)
 
         except (IOError):
             print("No PS3 Controller")
