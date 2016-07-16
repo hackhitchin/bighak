@@ -3,6 +3,7 @@ from triangula.input import SixAxis, SixAxisResource
 import drivetrain
 import time
 
+
 class rc:
     def __init__(self, drive):
         """Class Constructor"""
@@ -15,8 +16,9 @@ class rc:
 
     def run(self):
         """Start listening to the controller and pass state to drivetrain"""
-        # Get a joystick, this will fail unless the SixAxis controller is paired and active
-        # The bind_defaults argument specifies that we should bind actions to the SELECT and START buttons to
+        # Get a joystick, this will fail unless the SixAxis controller is
+        # paired and active The bind_defaults argument specifies that we
+        # should bind actions to the SELECT and START buttons to
         # centre the controller and reset the calibration respectively.
         try:
             with SixAxisResource(bind_defaults=True) as joystick:
@@ -34,16 +36,16 @@ class rc:
 
                     # Square Button
                     if buttons_pressed & 1 << SixAxis.BUTTON_SQUARE:
-                        print 'SQUARE pressed since last check'
+                        print('SQUARE pressed since last check')
 
                     # Triangle Button
                     if buttons_pressed & 1 << SixAxis.BUTTON_TRIANGLE:
-                        print 'Enable Motors'
+                        print('Enable Motors')
                         self.drive.enable_motors(True)
 
                     # Cross Button
                     if buttons_pressed & 1 << SixAxis.BUTTON_CROSS:
-                        print 'Disable Motors'
+                        print('Disable Motors')
                         self.drive.enable_motors(False)
 
                     # Show the values to the screen
@@ -62,6 +64,8 @@ if __name__ == "__main__":
     try:
         rc.run()
     except (KeyboardInterrupt) as e:
-        #except (Exception, KeyboardInterrupt) as e:
+        # except (Exception, KeyboardInterrupt) as e:
         # Stop any active threads before leaving
+        rc.stop()
+        drive.stop()
         print("Quitting")

@@ -1,5 +1,6 @@
 import serial
 
+
 # Mixer and serial comms
 class DriveTrain:
     def __init__(self):
@@ -7,18 +8,23 @@ class DriveTrain:
         self.enabled = False
         self.motor_left = 0
         self.motor_right = 0
-        #self.ser = serial.Serial('/dev/ttyUSB0', 9600)
+        # self.ser = serial.Serial('/dev/ttyUSB0', 9600)
         self.ser = serial.Serial(
             "/dev/ttyUSB0",
             baudrate=57600,
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
-            writeTimeout = 0,
-            timeout = 10,
+            writeTimeout=0,
+            timeout=10,
             rtscts=False,
             dsrdtr=False,
             xonxoff=False)
+
+    def stop(self):
+        """Called when we want to shut down."""
+        if self.ser:
+            self.ser.close()
 
     def mix_tank(self, lx, ly, rx, ry):
         """Mix [-1,1] values for Left and Right X,Y axis"""
@@ -31,7 +37,7 @@ class DriveTrain:
         """Mix axis and send the motors"""
         # Send left and right axis values to appropriate mixer
         self.mix_tank(lx, ly, rx, ry)
-        # Left and Right motor values will 
+        # Left and Right motor values will
         # have been updated by above method
         self.send_to_motors()
 
@@ -41,8 +47,8 @@ class DriveTrain:
             command = "[0]\n"
             print(command)
             self.ser.write(command)
-            #result = self.ser.readline()
-            #print(result)
+            # result = self.ser.readline()
+            # print(result)
 
     def send_to_motors(self):
         """Send motor Left and Right values to arduino"""
@@ -50,15 +56,15 @@ class DriveTrain:
             command = "[1,%f,%f]\n" % (self.motor_left, self.motor_right)
             print(command)
             self.ser.write(command)
-            #result = self.ser.readline()
-            #print(result)
+            # esult = self.ser.readline()
+            # print(result)
 
     def set_neutral(self):
         """Set motors to neutral"""
         self.motor_left = 0
         self.motor_right = 0
         self.send_neutral_to_motors()
-        #self.send_to_motors()
+        # self.send_to_motors()
 
     def enable_motors(self, enable):
         """Enable or disable motors"""
