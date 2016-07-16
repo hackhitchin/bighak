@@ -7,7 +7,18 @@ class DriveTrain:
         self.enabled = False
         self.motor_left = 0
         self.motor_right = 0
-        self.ser = serial.Serial('/dev/ttyACM0', 9600)
+        #self.ser = serial.Serial('/dev/ttyUSB0', 9600)
+        self.ser = serial.Serial(
+            "/dev/ttyUSB0",
+            baudrate=57600,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            writeTimeout = 0,
+            timeout = 10,
+            rtscts=False,
+            dsrdtr=False,
+            xonxoff=False)
 
     def mix_tank(self, lx, ly, rx, ry):
         """Mix [-1,1] values for Left and Right X,Y axis"""
@@ -24,16 +35,30 @@ class DriveTrain:
         # have been updated by above method
         self.send_to_motors()
 
+    def send_neutral_to_motors(self):
+        if self.ser:
+            # Can send neutral even when motors disabled
+            command = "[0]\n"
+            print(command)
+            self.ser.write(command)
+            #result = self.ser.readline()
+            #print(result)
+
     def send_to_motors(self):
         """Send motor Left and Right values to arduino"""
         if self.enabled and self.ser:
-            self.ser.write("[%f,%f]" % (self.motor_left, self.motor_right))
+            command = "[1,%f,%f]\n" % (self.motor_left, self.motor_right)
+            print(command)
+            self.ser.write(command)
+            #result = self.ser.readline()
+            #print(result)
 
     def set_neutral(self):
         """Set motors to neutral"""
         self.motor_left = 0
         self.motor_right = 0
-        self.send_to_motors()
+        self.send_neutral_to_motors()
+        #self.send_to_motors()
 
     def enable_motors(self, enable):
         """Enable or disable motors"""
