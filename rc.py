@@ -32,9 +32,19 @@ class rc:
                     rx = joystick.axes[2].corrected_value()
                     ry = joystick.axes[3].corrected_value()
 
-                    # Do something if buttons pressed
+                    # Square Button
                     if buttons_pressed & 1 << SixAxis.BUTTON_SQUARE:
                         print 'SQUARE pressed since last check'
+
+                    # Triangle Button
+                    if buttons_pressed & 1 << SixAxis.BUTTON_TRIANGLE:
+                        print 'Enable Motors'
+                        self.drive.enable_motors(True)
+
+                    # Cross Button
+                    if buttons_pressed & 1 << SixAxis.BUTTON_CROSS:
+                        print 'Disable Motors'
+                        self.drive.enable_motors(False)
 
                     # Show the values to the screen
 #                    print(lx,ly, rx,ry)
@@ -47,7 +57,8 @@ class rc:
             print("No PS3 Controller")
 
 if __name__ == "__main__":
-    rc = rc()
+    drive = drivetrain.DriveTrain()
+    rc = rc(drive)
     try:
         rc.run()
     except (KeyboardInterrupt) as e:
