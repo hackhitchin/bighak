@@ -14,6 +14,7 @@
 
 #define LED 13
 
+bool m_bDebugMessages = false;
 String m_szString;
 double m_dMotors_Current_V[2] = {MOTOR_NEUTRAL, MOTOR_NEUTRAL};
 double m_dMotors_Target_V[2] = {MOTOR_NEUTRAL, MOTOR_NEUTRAL};
@@ -169,28 +170,45 @@ void loop()
     m_nLastMilli = nMillis;
 
   // Loop motors [L/R] and update current voltage value based on acceleration ramps.
-  int nMotor = 0;
-  int nMotors = 2;
-  for (nMotor = 0; nMotor < nMotors; nMotor++)
+  int nMilliDiff = nMillis-m_nLastMilli;
+  if (nMilliDiff>0)
   {
-    // Calculate difference from current value and target value.
-    double dDiff = m_dMotors_Target_V[nMotor] - m_dMotors_Current_V[nMotor];
-    if (fabs(dDiff) > 0.001)
+    int nMotor = 0;
+    int nMotors = 2;
+    for (nMotor = 0; nMotor < nMotors; nMotor++)
     {
-      int nMilliDiff = nMillis - m_nLastMilli;
-      double dVIncrease = m_dVPerMilliSec * nMilliDiff;
-      m_dMotors_Current_V[nMotor] += (dDiff>=0.0? dVIncrease : -dVIncrease);
-      m_nLastMilli = nMillis;
+      // Calculate difference from current value and target value.
+      double dDiff = m_dMotors_Target_V[nMotor] - m_dMotors_Current_V[nMotor];
+      if (fabs(dDiff) > 0.001)
+      {
+        double dVIncrease = m_dVPerMilliSec * ((double)nMilliDiff);
+        if (dDiff<0.0)
+          dVIncrease = -dVIncrease; // Invert difference to decelerate
+        m_dMotors_Current_V[nMotor] += dVIncrease;
 
-      // Send to Motors
+        // Ensure voltage is capped to min/max
+        if (m_dMotors_Current_V[nMotor]<VOLT_MIN)
+          m_dMotors_Current_V[nMotor] = VOLT_MIN;
+        if (m_dMotors_Current_V[nMotor]>VOLT_MAX)
+          m_dMotors_Current_V[nMotor] = VOLT_MAX;
+          
+        // Send to Motors
+      }
     }
   }
-
+  
   // Turn on LED if we have reached target speed/voltage
-  if (fabs(m_dMotors_Current_V[LEFT_MOTOR]) >=4.5)
+  if (m_bDebugMessages)
+    Serial.println(m_dMotors_Current_V[LEFT_MOTOR]);
+
+  if (m_dMotors_Current_V[LEFT_MOTOR] >=4.5 || m_dMotors_Current_V[LEFT_MOTOR] <=0.5)
     digitalWrite(LED, HIGH);
   else
+    digitalWrite(LED, LOW);
     // Blink once each time round loop for status.
-    blink_LED(1);
+    //blink_LED(1);
+    
+  // Must always update nLastMilli!
+  m_nLastMilli = nMillis;
 }
 
