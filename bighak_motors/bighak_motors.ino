@@ -1,12 +1,19 @@
 #define SERIAL_BOARD_RATE 57600
 
+#define MOTOR_NEUTRAL 2.5
+// Millisecond timeout. If timeout reached, neutral is automatically kicked in.
+#define SAFETY_TIMEOUT 1000
+
 #define LEFT_MOTOR 0
 #define RIGHT_MOTOR 1
-#define LEFT_MOTOR_PIN A0
-#define RIGHT_MOTOR_PIN A1
-#define MOTOR_NEUTRAL 2.5
-#define MAX_PARAMS 3
 
+// Pin possibilities [PWM: 3, 5, 6, 9, 10, and 11]
+// WARNING: pins 5 and 6 share internal timer with 
+// millis() and delay() functions so aren't a great choice.
+#define LEFT_MOTOR_PIN 9
+#define RIGHT_MOTOR_PIN 10
+
+#define MAX_PARAMS 3
 #define SPEED_MIN -1.0
 #define SPEED_MAX 1.0
 #define VOLT_MIN 0.0
@@ -19,6 +26,7 @@ String m_szString;
 double m_dMotors_Current_V[2] = {MOTOR_NEUTRAL, MOTOR_NEUTRAL};
 double m_dMotors_Target_V[2] = {MOTOR_NEUTRAL, MOTOR_NEUTRAL};
 int m_nLastMilli = 0;
+int m_nLastMilliSerial = 0;
 double m_dVPerMilliSec = 0.0;
 
 void setup()
@@ -52,8 +60,20 @@ double speed_to_v(double dSpeed)
   double dRangeV = VOLT_MAX - VOLT_MIN;
   double dDistanceSpeed = dSpeed - SPEED_MIN;
   double dRatio = dDistanceSpeed / dRangeSpeed;
-  dV = 0.0 + (dRangeV * dRatio);
+  dV = VOLT_MIN + (dRangeV * dRatio);
   return dV;
+}
+
+int v_to_byte(double dV)
+{
+  // Convert range [0,5] to [0,255]
+  int nbyte = 0;
+  double dRangeByte = 255 - 0;
+  double dRangeV = VOLT_MAX - VOLT_MIN;
+  double dDistanceSpeed = dV - VOLT_MIN;
+  double dRatio = dDistanceSpeed / dRangeByte;
+  nbyte = 0 + (int)(dRangeByte * dRatio);
+  return nbyte;
 }
 
 void set_motor_target_speed(int nMotor, double dSpeed)
@@ -155,6 +175,8 @@ void read_command()
     
     parse_command();
     m_szString = ""; // clear out string
+    // Store time when we last recieved a command over serial comms.
+    m_nLastMilliSerial = millis();
   }
 }
 
@@ -168,6 +190,21 @@ void loop()
   int nMillis = millis();
   if (m_nLastMilli == 0)
     m_nLastMilli = nMillis;
+
+  // Safety cutout timer
+  int nSerialDiff = nMillis-m_nLastMilliSerial;
+  if (nSerialDiff>SAFETY_TIMEOUT)
+  {
+    // Serial comms last sentrecognised message over a second ago, can't 
+    // be sure comms have failed so set motors into neutral.
+    m_dMotors_Target_V[LEFT_MOTOR] = MOTOR_NEUTRAL;
+    m_dMotors_Target_V[RIGHT_MOTOR] = MOTOR_NEUTRAL;
+
+    // Turn on LED when in safety cutout mode
+    digitalWrite(LED, HIGH);
+  }
+  else
+    digitalWrite(LED, LOW);
 
   // Loop motors [L/R] and update current voltage value based on acceleration ramps.
   int nMilliDiff = nMillis-m_nLastMilli;
@@ -191,22 +228,16 @@ void loop()
           m_dMotors_Current_V[nMotor] = VOLT_MIN;
         if (m_dMotors_Current_V[nMotor]>VOLT_MAX)
           m_dMotors_Current_V[nMotor] = VOLT_MAX;
-          
-        // Send to Motors
       }
     }
   }
-  
-  // Turn on LED if we have reached target speed/voltage
-  if (m_bDebugMessages)
-    Serial.println(m_dMotors_Current_V[LEFT_MOTOR]);
 
-  if (m_dMotors_Current_V[LEFT_MOTOR] >=4.5 || m_dMotors_Current_V[LEFT_MOTOR] <=0.5)
-    digitalWrite(LED, HIGH);
-  else
-    digitalWrite(LED, LOW);
-    // Blink once each time round loop for status.
-    //blink_LED(1);
+  // Send signal voltage to Motors in PWM range of [0,255]
+  analogWrite(LEFT_MOTOR_PIN, v_to_byte(m_dMotors_Current_V[LEFT_MOTOR]));
+  analogWrite(RIGHT_MOTOR_PIN, v_to_byte(m_dMotors_Current_V[RIGHT_MOTOR]));
+
+  // Blink once each time round loop for status.
+  //blink_LED(1);
     
   // Must always update nLastMilli!
   m_nLastMilli = nMillis;
