@@ -61,23 +61,42 @@ double speed_to_v(double dSpeed)
   double dDistanceSpeed = dSpeed - SPEED_MIN;
   double dRatio = dDistanceSpeed / dRangeSpeed;
   dV = VOLT_MIN + (dRangeV * dRatio);
+
+  // Ensure result is within [VOLT_MIN,VOLT_MAX]
+  if (dV < VOLT_MIN)
+    dV = VOLT_MIN;
+  if (dV > VOLT_MAX)
+    dV = VOLT_MAX;
+    
   return dV;
 }
 
 int v_to_byte(double dV)
 {
   // Convert range [0,5] to [0,255]
-  int nbyte = 0;
   double dRangeByte = 255 - 0;
   double dRangeV = VOLT_MAX - VOLT_MIN;
   double dDistanceSpeed = dV - VOLT_MIN;
   double dRatio = dDistanceSpeed / dRangeByte;
-  nbyte = 0 + (int)(dRangeByte * dRatio);
-  return nbyte;
+  int nByte = 0 + (int)(dRangeByte * dRatio);
+
+  // Ensure result is within [0,255]
+  if (nByte < 0)
+    nByte = 0;
+  if (nByte > 255)
+    nByte = 255;
+    
+  return nByte;
 }
 
 void set_motor_target_speed(int nMotor, double dSpeed)
 {
+  // Ensure speed is within [-1,1]
+  if (dSpeed < SPEED_MIN)
+    dSpeed = SPEED_MIN;
+  if (dSpeed > SPEED_MAX)
+    dSpeed = SPEED_MAX;
+    
   // nMotor is index (L/R) and the speed is in range [-1,1]
   m_dMotors_Target_V[nMotor] = speed_to_v(dSpeed);
 }
