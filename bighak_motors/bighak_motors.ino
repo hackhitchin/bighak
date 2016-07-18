@@ -76,8 +76,8 @@ int v_to_byte(double dV)
   // Convert range [0,5] to [0,255]
   double dRangeByte = 255 - 0;
   double dRangeV = VOLT_MAX - VOLT_MIN;
-  double dDistanceSpeed = dV - VOLT_MIN;
-  double dRatio = dDistanceSpeed / dRangeByte;
+  double dDistanceV = dV - VOLT_MIN;
+  double dRatio = dDistanceV / dRangeV;
   int nByte = 0 + (int)(dRangeByte * dRatio);
 
   // Ensure result is within [0,255]
@@ -85,7 +85,7 @@ int v_to_byte(double dV)
     nByte = 0;
   if (nByte > 255)
     nByte = 255;
-    
+  Serial.println(nByte);
   return nByte;
 }
 
