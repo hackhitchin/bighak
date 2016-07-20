@@ -12,11 +12,13 @@
 // millis() and delay() functions so aren't a great choice.
 #define LEFT_MOTOR_PIN 9
 #define RIGHT_MOTOR_PIN 10
+#define LEFT_REVERSE_PIN 8
+#define RIGHT_REVERSE_PIN 11
 
 #define MAX_PARAMS 3
 #define SPEED_MIN -1.0
 #define SPEED_MAX 1.0
-#define VOLT_MIN 0.0
+#define VOLT_MIN -5.0
 #define VOLT_MAX 5.0
 
 #define LED 13
@@ -39,6 +41,8 @@ void setup()
 
   pinMode(LEFT_MOTOR_PIN, OUTPUT);
   pinMode(RIGHT_MOTOR_PIN, OUTPUT);
+  pinMode(LEFT_REVERSE_PIN, OUTPUT);
+  pinMode(RIGHT_REVERSE_PIN, OUTPUT);
 
   // Calculate acceleration based on number of seconds from zero to full throttle.
   calculate_acceleration(1.0);
@@ -71,12 +75,12 @@ double speed_to_v(double dSpeed)
   return dV;
 }
 
-int v_to_byte(double dV)
+int v_to_byte(double dV, bool &bInReverse)
 {
   // Convert range [0,5] to [0,255]
   double dRangeByte = 255 - 0;
-  double dRangeV = VOLT_MAX - VOLT_MIN;
-  double dDistanceV = dV - VOLT_MIN;
+  double dRangeV = (VOLT_MAX - VOLT_MIN) / 2.0; // half range as byte value should be [0,5] not [-5,5] and if V negative then set REVERSE flag true.
+  double dDistanceV = fabs(dV) - (VOLT_MIN + dRangeV);
   double dRatio = dDistanceV / dRangeV;
   int nByte = 0 + (int)(dRangeByte * dRatio);
 
@@ -85,7 +89,10 @@ int v_to_byte(double dV)
     nByte = 0;
   if (nByte > 255)
     nByte = 255;
+    
   Serial.println(nByte);
+
+  bInReverse = (dV<0.0? true:false);
   return nByte;
 }
 
@@ -252,8 +259,13 @@ void loop()
   }
 
   // Send signal voltage to Motors in PWM range of [0,255]
-  analogWrite(LEFT_MOTOR_PIN, v_to_byte(m_dMotors_Current_V[LEFT_MOTOR]));
-  analogWrite(RIGHT_MOTOR_PIN, v_to_byte(m_dMotors_Current_V[RIGHT_MOTOR]));
+  bool bLeftReverse=false, bRightReverse=false;
+  analogWrite(LEFT_MOTOR_PIN, v_to_byte(m_dMotors_Current_V[LEFT_MOTOR], bLeftReverse));
+  analogWrite(RIGHT_MOTOR_PIN, v_to_byte(m_dMotors_Current_V[RIGHT_MOTOR], bRightReverse));
+  // Update reverse pins 1:0 values
+  digitalWrite(LEFT_REVERSE_PIN, bLeftReverse? HIGH:LOW);
+  digitalWrite(RIGHT_REVERSE_PIN, bRightReverse? HIGH:LOW);
+
 
   // Blink once each time round loop for status.
   //blink_LED(1);
