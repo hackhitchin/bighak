@@ -2,13 +2,15 @@
 from triangula.input import SixAxis, SixAxisResource
 import drivetrain
 import time
+import sounds
 
 
 class rc:
-    def __init__(self, drive):
+    def __init__(self, drive, sounds):
         """Class Constructor"""
         self.killed = False
         self.drive = drive
+        self.sounds = sounds
 
     def stop(self):
         """Simple method to stop the RC loop"""
@@ -34,6 +36,24 @@ class rc:
                         # Read the x and y axes of the right hand stick
                         rx = joystick.axes[2].corrected_value()
                         ry = joystick.axes[3].corrected_value()
+
+                        # DPad Buttons
+                        if buttons_pressed & 1 << SixAxis.BUTTON_D_DOWN:
+                            print('DPad Down pressed since last check')
+                            self.sounds.Play("pew.wav")
+
+                        # DPad Buttons
+                        if buttons_pressed & 1 << SixAxis.BUTTON_D_UP:
+                            print('DPad Up pressed since last check')
+                            self.sounds.Play("start.wav")
+
+                        # DPad Buttons
+                        if buttons_pressed & 1 << SixAxis.BUTTON_D_LEFT:
+                            print('DPad Left pressed since last check')
+
+                        # DPad Buttons
+                        if buttons_pressed & 1 << SixAxis.BUTTON_D_RIGHT:
+                            print('DPad Right pressed since last check')
 
                         # Square Button
                         if buttons_pressed & 1 << SixAxis.BUTTON_SQUARE:
@@ -62,8 +82,9 @@ class rc:
 
 
 if __name__ == "__main__":
+    sound = sounds.Sounds()
     drive = drivetrain.DriveTrain()
-    rc = rc(drive)
+    rc = rc(drive, sound)
     try:
         rc.run()
     except (KeyboardInterrupt) as e:
