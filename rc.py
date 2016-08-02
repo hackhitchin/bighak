@@ -20,43 +20,46 @@ class rc:
         # paired and active The bind_defaults argument specifies that we
         # should bind actions to the SELECT and START buttons to
         # centre the controller and reset the calibration respectively.
-        try:
-            with SixAxisResource(bind_defaults=True) as joystick:
-                # Loop indefinitely
-                while not self.killed:
-                    # Get button and joystick axis state
-                    buttons_pressed = joystick.get_and_clear_button_press_history()
+        while not self.killed:
+            try:
+                with SixAxisResource(bind_defaults=True) as joystick:
+                    # Loop indefinitely
+                    while not self.killed:
+                        # Get button and joystick axis state
+                        buttons_pressed = joystick.get_and_clear_button_press_history()
 
-                    # Read the x and y axes of the left hand stick
-                    lx = joystick.axes[0].corrected_value()
-                    ly = joystick.axes[1].corrected_value()
-                    # Read the x and y axes of the right hand stick
-                    rx = joystick.axes[2].corrected_value()
-                    ry = joystick.axes[3].corrected_value()
+                        # Read the x and y axes of the left hand stick
+                        lx = joystick.axes[0].corrected_value()
+                        ly = joystick.axes[1].corrected_value()
+                        # Read the x and y axes of the right hand stick
+                        rx = joystick.axes[2].corrected_value()
+                        ry = joystick.axes[3].corrected_value()
 
-                    # Square Button
-                    if buttons_pressed & 1 << SixAxis.BUTTON_SQUARE:
-                        print('SQUARE pressed since last check')
+                        # Square Button
+                        if buttons_pressed & 1 << SixAxis.BUTTON_SQUARE:
+                            print('SQUARE pressed since last check')
 
-                    # Triangle Button
-                    if buttons_pressed & 1 << SixAxis.BUTTON_TRIANGLE:
-                        print('Enable Motors')
-                        self.drive.enable_motors(True)
+                        # Triangle Button
+                        if buttons_pressed & 1 << SixAxis.BUTTON_TRIANGLE:
+                            print('Enable Motors')
+                            self.drive.enable_motors(True)
 
-                    # Cross Button
-                    if buttons_pressed & 1 << SixAxis.BUTTON_CROSS:
-                        print('Disable Motors')
-                        self.drive.enable_motors(False)
+                        # Cross Button
+                        if buttons_pressed & 1 << SixAxis.BUTTON_CROSS:
+                            print('Disable Motors')
+                            self.drive.enable_motors(False)
 
-                    # Show the values to the screen
-#                    print(lx,ly, rx,ry)
-                    if self.drive is not None:
-                        self.drive.mix_channels_and_send(lx, ly, rx, ry)
-                    # Sleep a small amount between loop iterations
-                    time.sleep(0.05)
+                        # Show the values to the screen
+                        if self.drive is not None:
+                            self.drive.mix_channels_and_send(lx, ly, rx, ry)
+                        # Sleep a small amount between loop iterations
+                        time.sleep(0.05)
 
-        except (IOError):
-            print("No PS3 Controller")
+            except (IOError):
+                print("No PS3 Controller")
+                # Sleep for half a second to give user time to connect a PS3 Controller
+                time.sleep(0.5)
+
 
 if __name__ == "__main__":
     drive = drivetrain.DriveTrain()
