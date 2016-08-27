@@ -1,8 +1,9 @@
 #define SERIAL_BOARD_RATE 57600
 
-#define MOTOR_NEUTRAL 2.5
+#define MOTOR_NEUTRAL 0.0
 // Millisecond timeout. If timeout reached, neutral is automatically kicked in.
 #define SAFETY_TIMEOUT 1000
+#define FULL_ACCEL_SECONDS 0.5
 
 #define LEFT_MOTOR 0
 #define RIGHT_MOTOR 1
@@ -10,9 +11,15 @@
 // Pin possibilities [PWM: 3, 5, 6, 9, 10, and 11]
 // WARNING: pins 5 and 6 share internal timer with 
 // millis() and delay() functions so aren't a great choice.
-#define LEFT_MOTOR_PIN 9
-#define RIGHT_MOTOR_PIN 10
+
+// BLACK CABLE
 #define LEFT_REVERSE_PIN 8
+// BLUE CABLE
+#define LEFT_MOTOR_PIN 9
+
+// BROWN CABLE
+#define RIGHT_MOTOR_PIN 10
+// PINK CABLE
 #define RIGHT_REVERSE_PIN 11
 
 #define MAX_PARAMS 3
@@ -45,7 +52,7 @@ void setup()
   pinMode(RIGHT_REVERSE_PIN, OUTPUT);
 
   // Calculate acceleration based on number of seconds from zero to full throttle.
-  calculate_acceleration(1.0);
+  calculate_acceleration(FULL_ACCEL_SECONDS);
 }
 
 void calculate_acceleration(float fSeconds)
@@ -89,10 +96,13 @@ int v_to_byte(double dV, bool &bInReverse)
     nByte = 0;
   if (nByte > 255)
     nByte = 255;
-    
-  Serial.println(nByte);
 
-  bInReverse = (dV<0.0? true:false);
+  bInReverse = (dV<0.0 && nByte? true:false);
+
+  Serial.print("Byte = ");
+  Serial.println(nByte);
+  Serial.println(bInReverse);
+
   return nByte;
 }
 
