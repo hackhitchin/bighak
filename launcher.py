@@ -1,60 +1,29 @@
-# Import triangula module to interact with SixAxis
 from triangula.input import SixAxis, SixAxisResource
 import drivetrain
 import time
+import qr
+import rc
 import sounds
+# GPIO
 
 
-class rc:
-    def __init__(self, drive, sounds):
+class launcher:
+    def __init__(self):
         """ Class Constructor """
         self.killed = False
-        self.drive = drive
-        self.sounds = sounds
+        self.sound = sounds.Sounds()
+        self.drive = drivetrain.DriveTrain()
+        # Modes
+        self.rc = rc.rc(self.drive, self.sound)
+        self.qr = qr.qr(self.drive, self.sound)
+
+        self.MODE_RC = 1
+        self.MODE_QR = 2
+        self.mode = self.MODE_RC
 
     def stop(self):
         """ Simple method to stop the RC loop """
         self.killed = True
-
-    def loop(self, joystick, buttons):
-        """ Single loop to determin controller state and send to motors """
-
-        # Read the x and y axes of the left hand stick
-        lx = joystick.axes[0].corrected_value()
-        ly = joystick.axes[1].corrected_value()
-        # Read the x and y axes of the right hand stick
-        rx = joystick.axes[2].corrected_value()
-        ry = joystick.axes[3].corrected_value()
-
-        # DPad Buttons
-        if buttons & 1 << SixAxis.BUTTON_D_DOWN:
-            print('DPad Down pressed since last check')
-            self.sounds.Play("pew.wav")
-
-        # DPad Buttons
-        if buttons & 1 << SixAxis.BUTTON_D_UP:
-            print('DPad Up pressed since last check')
-            self.sounds.Play("start.wav")
-
-        # DPad Buttons
-        if buttons & 1 << SixAxis.BUTTON_D_LEFT:
-            print('DPad Left pressed since last check')
-
-        # DPad Buttons
-        if buttons & 1 << SixAxis.BUTTON_D_RIGHT:
-            print('DPad Right pressed since last check')
-
-        # Square Button
-        if buttons & 1 << SixAxis.BUTTON_SQUARE:
-            print('SQUARE pressed since last check')
-
-        # Triangle Button
-        # Cross Button
-        # These buttons are handled by the launcher app.
-
-        # Show the values to the screen
-        if self.drive is not None:
-            self.drive.mix_channels_and_send(lx, ly, rx, ry)
 
     def run(self):
         """ Start listening to the controller and pass state to drivetrain """
@@ -82,9 +51,21 @@ class rc:
                         if buttons & 1 << SixAxis.BUTTON_CROSS:
                             print('Disable Motors')
                             self.drive.enable_motors(False)
+                            # If user hit STOP in ANY mode,
+                            # stop and reset to RC mode
+                            self.mode = self.MODE_RC
 
-                        # Perform joystick and rc mode operations
-                        self.loop(joystick, buttons)
+                        # Start Button
+                        if buttons & 1 << SixAxis.BUTTON_START:
+                            print('Start pressed')
+                            if self.mode == self.MODE_QR:
+                                self.qr.start()
+
+                        # Pass "loop" call to either RC mode or QR mode
+                        if self.mode == self.MODE_RC:
+                            self.rc.loop(joystick, buttons)
+                        elif self.mode == self.MODE_QR:
+                            self.qr.loop()
 
                         # Sleep a small amount between loop iterations
                         time.sleep(0.05)
@@ -97,14 +78,11 @@ class rc:
 
 
 if __name__ == "__main__":
-    sound = sounds.Sounds()
-    drive = drivetrain.DriveTrain()
-    rc = rc(drive, sound)
+    launcher = launcher()
     try:
-        rc.run()
+        launcher.run()
     except (KeyboardInterrupt) as e:
         # except (Exception, KeyboardInterrupt) as e:
         # Stop any active threads before leaving
-        rc.stop()
-        drive.stop()
+        launcher.stop()
         print("Quitting")
