@@ -17,7 +17,8 @@ class rc:
         self.killed = True
 
     def loop(self, joystick, buttons):
-        """ Single loop to determin controller state and send to motors """
+        """ Single loop to determin controller state and send to motors
+        NOTE: DO NOT RUN ANYTHING THAT BLOCKS IN THIS METHOD """
 
         # Read the x and y axes of the left hand stick
         lx = joystick.axes[0].corrected_value()

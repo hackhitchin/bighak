@@ -1,4 +1,4 @@
-from time import sleep
+import time
 
 
 class qr:
@@ -8,12 +8,76 @@ class qr:
         self.drive = drive
         self.sounds = sounds
 
-        self.nPause = 0.5  # pause between command
-        self.nInterval = 0.5  # In Seconds
+        self.nPause_between_commands = 0.5  # pause between command
+        self.nFBSeconds = 1.0  # Drive forward/backward for # seconds
+        self.nLRSeconds = 0.125  # Turn left/right for # seconds
+        self.nZPSeconds = 0.5  # Pause/fire for # seconds
+
+        self.route = []  # array (Command,  Repeat Count, Finish Time)
+        self.nCurrent_item = -1  # -1 means not running
+        self.running = False
 
     def stop(self):
         """ Simple method to stop the RC loop """
+        self.running = False
         self.killed = True
+
+    def command_seconds(self, command):
+        """ return the number of seconds this command char takes. """
+        seconds = 0.5
+        if command == 'F' or command == 'B':
+            seconds = self.nFBSeconds
+        elif command == 'L' or command == 'R':
+            seconds = self.nLRSeconds
+        elif command == 'P' or command == 'Z':
+            seconds = self.nZPSeconds
+        return seconds
+
+    def calculate_finished_time(self):
+        """ Calculate a finished time for each element to the route
+        base upon hard coded time per command multiplied by repeat count. """
+        start_time = time.time()
+        for index, x in enumerate(self.route):
+            time_per_command = self.command_seconds(x[0])
+            finish_time = (start_time +
+                           (time_per_command * x[1]) +
+                           self.nPause_between_commands)
+            self.route[index] = (x[0], x[1], finish_time)
+
+    def loop(self, joystick, buttons):
+        """ Single loop to determin controller state and send to motors
+        NOTE: DO NOT RUN ANYTHING THAT BLOCKS IN THIS METHOD """
+        if not self.running:
+            return  # Don't bother doing anything
+
+        route_length = len(self.route)
+        if (self.nCurrent_item == -1 and route_length):
+            # Start Route by setting current item to zero
+            self.nCurrent_item = 0
+            # Calculate a finished time for each element to the route
+            self.calculate_finished_time()
+
+        if self.current_item >= 0 and self.current_item < route_length:
+            # Get current time and current item
+            current_time = time.time()
+            command, repeat_count, finish_time = self.route[self.current_item]
+
+            # Test if we have finished this item
+            if current_time > finish_time:
+                # Finished, skip to next item
+                self.current_item = self.current_item + 1
+            else:
+                # Current item is the one we are working on right now.
+                if command == 'F':
+                    self.drive.mix_channels_and_send(0.0, 1.0, 0.0, 1.0)
+                elif command == 'B':
+                    self.drive.mix_channels_and_send(0.0, -1.0, 0.0, -1.0)
+                elif command == 'L':
+                    self.drive.mix_channels_and_send(0.0, -1.0, 0.0, 1.0)
+                elif command == 'R':
+                    self.drive.mix_channels_and_send(0.0, 1.0, 0.0, -1.0)
+        else:
+            self.current_item = -1
 
     def isNumber(self, c):
         """ Simple test for whether character is a number """
@@ -23,53 +87,11 @@ class qr:
         else:
             return False
 
-    def repeatSend(self, commandChar, nSeconds):
-        # Send a single char repeatedly at a specific
-        # interval for a specific length of time.
-        # Have to play fireing sound here as it sounds as it lights LED
-        if commandChar == 'P':
-            # Play a sound to show that we are scanning
-            self.sounds.Play("pew.wav")
+    def process_command(self, commandChar, count):
+        """ Simply add command and count to array """
+        self.route.append((commandChar, count))
 
-        if (commandChar == 'Z'):
-            # Uppercase 'Z' to turn LED ON
-            serial.write('Z')
-            serial.write('Z')
-            serial.write('Z')
-            serial.write('Z')
-            serial.write('Z')
-            # Play sound
-            self.sounds.Play("pew.wav")
-            # Lower case 'z' to turn LED OFF
-            serial.write('z')
-            serial.write('z')
-            serial.write('z')
-            serial.write('z')
-            serial.write('z')
-            sleep(0.3)
-        else:
-            while (nSeconds > 0.0):
-                print(commandChar)
-                serial.write(commandChar)
-                sleep(self.nInterval)
-                nSeconds = nSeconds - self.nInterval
-
-    def sendCommandString(self, commandChar, count):
-        """ Simply write to the serial device """
-        nFBSeconds = 1.0
-        nLRSeconds = 0.125
-        nPSeconds = 0.5
-        loop = 0
-        while loop < count:
-            if commandChar == 'F' or commandChar == 'B':
-                self.repeatSend(commandChar, nFBSeconds)
-            if commandChar == 'L' or commandChar == 'R':
-                self.repeatSend(commandChar, nLRSeconds)
-            if commandChar == 'P' or commandChar == 'Z':
-                self.repeatSend(commandChar, nPSeconds)
-            loop = loop + 1
-
-    def parseCommandString(self, commandString):
+    def parse_command_string(self, commandString):
         """ Parse command string and perform move operation """
         nIndex = 0
         commandChar = ' '
@@ -78,9 +100,8 @@ class qr:
         for c in commandString:
             if self.isNumber(c) == False:
                 if commandChar != ' ':
-                    sleep(self.nPause)
                     commandCount = int(countString)
-                    self.sendCommandString(commandChar, commandCount)
+                    self.process_command(commandChar, commandCount)
                 # 'c' should be the command character
                 # (but not garanteed, its only NOT A NUMBER)
                 commandChar = c
@@ -94,9 +115,8 @@ class qr:
 
             # If its the final char, send it
             if nIndex == len(commandString)-1 and commandChar != ' ':
-                sleep(self.nPause)
                 commandCount = int(countString)
-                self.sendCommandString(commandChar, commandCount)
+                self.process_command(commandChar, commandCount)
 
             # Increment loop counter
             nIndex = nIndex+1
