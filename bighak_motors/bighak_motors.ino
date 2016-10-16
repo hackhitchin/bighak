@@ -12,6 +12,9 @@
 // WARNING: pins 5 and 6 share internal timer with 
 // millis() and delay() functions so aren't a great choice.
 
+// [nCommand,param1,param2]
+// Example signal = [1,1.0,1.0] would set motor speed to Full forward for both left and right motors
+
 // BLACK CABLE
 #define LEFT_REVERSE_PIN 8
 // BLUE CABLE
@@ -37,6 +40,7 @@ double m_dMotors_Target_V[2] = {MOTOR_NEUTRAL, MOTOR_NEUTRAL};
 int m_nLastMilli = 0;
 int m_nLastMilliSerial = 0;
 double m_dVPerMilliSec = 0.0;
+bool m_bTimedOut = true;
 
 void setup()
 {
@@ -213,6 +217,7 @@ void read_command()
     m_szString = ""; // clear out string
     // Store time when we last recieved a command over serial comms.
     m_nLastMilliSerial = millis();
+    m_bTimedOut = false;
   }
 }
 
@@ -229,7 +234,9 @@ void loop()
 
   // Safety cutout timer
   int nSerialDiff = nMillis-m_nLastMilliSerial;
-  if (nSerialDiff>SAFETY_TIMEOUT)
+  m_bTimedOut = (m_bTimedOut || nSerialDiff>SAFETY_TIMEOUT)? true:false;
+
+  if (m_bTimedOut)
   {
     // Serial comms last sentrecognised message over a second ago, can't 
     // be sure comms have failed so set motors into neutral.
